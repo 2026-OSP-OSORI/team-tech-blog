@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flask에서 로그인 체크하기: session과 login_required 데코레이터</title>
+</head>
+<body>
+
+<h1>Flask에서 로그인 체크하기: session과 login_required 데코레이터</h1>
+
+<h2>사용 배경</h2>
+<p>
+  현재 수강 중인 오픈SW플랫폼이라는 전공 수업은 웹 프로젝트 팀플(FE/BE)을 진행하고 최종 발표에서 데모를 선보여야 하는 수업이다. <br>
+  정해진 팀플 주제에 따라 우리 팀은 이화여대 학생들끼리 핸드메이드 작품을 사고파는 마켓 <b>Emade</b>를 만들고 있다. <br>
+  필자는 그중 백엔드(Flask)를 맡고 있고, 로그인 기능은 교수님이 정한 필수 요구사항이었다.
+</p>
+<p>
+  백엔드는 세 명이 나눠 맡았고, 필자는 회원가입과 로그인을 포함한 회원·유저 파트를 맡았다. <br>
+  API 명세를 쓰다 보니 거의 모든 API에 <b>로그인 필요 O/X</b> 칸이 있었는데, <br>
+  로그인이 필요한 API에 로그인하지 않은 사용자가 요청하면, 어느 파트의 API든 똑같이
+  <code>*로그인이 필요한 기능입니다.</code>라는 공통 에러를 돌려줘야 했다.
+</p>
+<p>
+  로그인 기능이 본인의 파트라서 이 공통 처리도 내 책임이 되었다. <br>
+  개인적으로 팀플에서 중요하게 생각하는 점은, 팀원이 내 기능의 내부 로직을 몰라도 쉽게 가져다 쓸 수 있어야 한다는 것이다. 그래야 협업이 원활해진다. <br>
+  다른 파트 팀원도 편하게 쓰고, 나도 편하게 쓸 수 있는 방법이 뭔지를 고민하다가
+  <b>데코레이터</b>를 알게 됐고, 이 글은 거기서부터 시작된다.
+</p>
+
+<h2>목표</h2>
+<blockquote>
+  <p><b>Flask에서 로그인 체크를 간편하게 하자</b></p>
+  <ul>
+    <li>API마다 같은 코드를 반복해서 쓰지 않도록</li>
+    <li>함수 안쪽을 몰라도, 사용법만 알면 누구나 쓸 수 있도록</li>
+  </ul>
+</blockquote>
+
+<h2>STEP 1: Flask의 session이란</h2>
+<p>
+  HTTP는 요청 하나하나가 서로 독립적이기 때문에, 서버는 기본적으로 "방금 요청한 사람이 아까 로그인한 그 사람인지" 모른다. <br>
+  그래서 로그인 상태를 기억해 둘 곳이 필요한데, Flask에서는 이걸 <b>session</b>으로 한다.
+</p>
+<p>
+  <code>session</code>은 딕셔너리처럼 쓸 수 있는 객체로, 값을 넣어두면 Flask가 그 내용을 쿠키에 담아 브라우저로 보낸다. <br>
+  브라우저는 다음 요청부터 그 쿠키를 자동으로 함께 보내고, Flask는 쿠키를 읽어서 <code>session</code>을 다시 채워주면서 요청을 보낸 것이 누구인지 식별할 수 있게 된다. <br>
+  쿠키에는 <code>SECRET_KEY</code>로 만든 서명이 붙어 있어서, 사용자가 쿠키 내용을 마음대로 바꾸면 Flask가 알아챈다.
+  그래서 <code>SECRET_KEY</code>는 반드시 설정해야 하고, 외부에 공개하면 안 된다.
+</p>
+
+<pre><code># app.py
+app = Flask(__name__)
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")  # .env 파일에 저장, 깃에는 올리지 않음
+</code></pre>
+
+<p>
+  로그인에 성공하면 session에 사용자 ID(uid)를 저장한다. 수업 실습에서 배운 방식 그대로다.
+</p>
+
+<pre><code># routes/auth.py
+@auth_bp.route("/login", methods=["POST"])
+def login():
+    body = request.get_json(silent=True) or {}
+    uid = auth_service.login(body.get("email"), body.get("password"))
+    session["uid"] = uid  # 로그인 성공 → session에 uid 저장
+    return jsonify(success=True, data=None)
+</code></pre>
+
+<p>
+  이제 다른 API에서는 <code>session</code>에 uid가 있는지만 보면 로그인 여부를 알 수 있다.
+  매번 <code>session.get("uid")</code>를 직접 쓰지 않도록 함수로 한 번 감싸면 호출이 편해진다.
+</p>
+
+<pre><code># utils/auth.py
+from flask import session
+
+def get_current_uid():
+    return session.get("uid")
+</code></pre>
+
+<p>
+  <code>session["uid"]</code>가 아니라 <code>session.get("uid")</code>를 쓴 이유는, 값이 없을 때 에러 대신 <code>None</code>을 받기 위해서다. (로그인했으면 uid를, 안 했으면 <code>None</code>을 돌려줌) <br>
+  나중에 session을 다른 방식으로 바꾸더라도 이 함수만 고치면 되고, 나머지 코드는 그대로 둘 수 있다.
+</p>
+
+<h2>STEP 2: 로그인이 필요한 API마다 <code>if</code>문을 반복해서 쓰는 불편함</h2>
+<p>
+  <code>get_current_uid()</code>가 생겼으니, 로그인이 필요한 API 맨 위에서 이렇게 검사하면 된다.
+</p>
+
+<pre><code>@users_bp.route("/me", methods=["GET"])
+def my_summary():
+    if get_current_uid() is None:
+        return error(401, "LOGIN_REQUIRED", "*로그인이 필요한 기능입니다.")
+    ...
+
+@orders_bp.route("/orders", methods=["GET"])
+def my_schedule():
+    if get_current_uid() is None:
+        return error(401, "LOGIN_REQUIRED", "*로그인이 필요한 기능입니다.")
+    ...
+</code></pre>
+
+<p>
+  동작은 하지만 문제가 있다. 프로젝트에서 로그인이 필요한 API는 백엔드 세 파트를 합치면 수십 개다.
+  그 모든 API에 똑같은 두 줄을 복사해야 하는 불상사가 발생한다.
+</p>
+<ul>
+  <li>누군가 한 곳에서 빼먹으면, 로그인하지 않은 사용자도 그 API를 쓸 수 있게 된다.</li>
+  <li>에러 메시지를 바꾸려면 모든 파일을 찾아다니며 고쳐야 한다.</li>
+  <li>다른 파트 팀원은 에러 코드와 메시지 문구까지 정확히 알아야 한다.</li>
+</ul>
+<p>
+  나열한 단점들을 보완할 수 있는 이보다 더 효율적인 방법이 필요했다.
+</p>
+
+<h2>STEP 3: 데코레이터란</h2>
+<p>
+  데코레이터(decorator)는 <b>다른 함수를 감싸서, 원래 함수를 고치지 않고 앞뒤에 기능을 덧붙이는 함수</b>다.
+  디자인 패턴 중 하나인 데코레이터 패턴(객체를 감싸서 기능을 추가하는 방식)과 같은 아이디어인데(자바에서 배웠다),
+  Python은 이걸 <code>@</code> 문법으로 아주 간단하게 쓸 수 있게 해준다.
+</p>
+<p>
+  사실 우리는 Flask를 쓰면서 이미 데코레이터를 쓰고 있었다. <code>@app.route(...)</code>가 바로 데코레이터다.
+</p>
+<p>
+  Python에서 함수는 값처럼 다룰 수 있다. 다른 함수에 인자로 넘길 수도 있고, 함수가 함수를 돌려줄 수도 있다.
+  아래 두 코드는 완전히 같은 의미다.
+</p>
+
+<pre><code># 1) @ 문법
+@login_required
+def logout():
+    ...
+
+# 2) 풀어서 쓰면
+def logout():
+    ...
+logout = login_required(logout)
+</code></pre>
+
+<p>
+  즉 <code>@login_required</code>는 "<code>logout</code> 함수를 <code>login_required</code>에 넣고,
+  돌려받은 새 함수로 <code>logout</code>을 바꿔치기해라"라는 뜻이다.
+  새 함수가 "로그인 검사 → 통과하면 원래 <code>logout</code> 실행"을 하게 되는 것이다.
+</p>
+
+<h2>STEP 4: login_required 만들기</h2>
+
+<pre><code># utils/auth.py
+from functools import wraps
+
+from flask import session
+from utils.response import error
+
+
+def get_current_uid():
+    return session.get("uid")
+
+
+def login_required(f):
+    # 로그인이 필요한 API에 붙이기, 로그인하지 않은 요청은 401
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if get_current_uid() is None:
+            return error(401, "LOGIN_REQUIRED", "*로그인이 필요한 기능입니다.")
+        return f(*args, **kwargs)
+    return wrapper
+</code></pre>
+
+<h3><code>def login_required(f):</code></h3>
+<p>
+  데코레이터 본체다. 인자 <code>f</code>로 감쌀 원래 함수(예: <code>logout</code>)를 받는다.
+</p>
+
+<h3><code>def wrapper(*args, **kwargs):</code></h3>
+<p>
+  원래 함수 대신 실제로 실행될 새 함수다. 함수 안에 함수를 정의했기 때문에,
+  <code>wrapper</code>는 바깥 함수가 받은 <code>f</code>를 기억하고 나중에 꺼내 쓸 수 있다.
+</p>
+<p>
+  <code>*args, **kwargs</code>는 "어떤 인자가 들어오든 전부 받는다"는 뜻이다. <br>
+  Flask는 URL 경로의 값을 함수 인자로 넘겨준다. 예를 들어 <code>/reviews/&lt;rid&gt;</code> API는 <code>rid</code>를 받는다.
+  <code>wrapper</code>가 인자를 특정해 버리면 API마다 데코레이터를 따로 만들어야 한다. <br>
+  이렇게 두면 인자가 없는 <code>logout()</code>에도, <code>rid</code>를 받는 <code>delete_review(rid)</code>에도 하나의 데코레이터를 쓸 수 있다.
+</p>
+
+<h3><code>if get_current_uid() is None:</code> / <code>return error(...)</code></h3>
+<p>
+  STEP 2에서 API마다 반복하던 그 검사다. 이제 이 한 곳에만 있다.
+  로그인하지 않았으면 원래 함수는 <b>실행하지도 않고</b> 바로 401 에러를 돌려준다.
+  <code>error()</code>는 팀 공통 응답 형식을 만드는 함수다.
+</p>
+
+<pre><code># utils/response.py
+def error(status, code, message):
+    return jsonify(success=False, error={"code": code, "message": message}), status
+</code></pre>
+
+<h3><code>return f(*args, **kwargs)</code></h3>
+<p>
+  로그인 검사를 통과하면 원래 함수를 받은 인자 그대로 실행하고, 그 결과를 그대로 돌려준다.
+  원래 함수 입장에서는 감싸져 있다는 걸 전혀 모른다.
+</p>
+
+<h3><code>return wrapper</code></h3>
+<p>
+  감싸서 새로 만든 함수를 돌려준다. STEP 3에서 본 것처럼 이 함수가 원래 함수 자리를 차지한다. <br>
+  <code>wrapper</code> 뒤에 괄호가 없다는 점 주의! - 함수를 실행한 결과가 아니라 <b>함수 자체</b>를 돌려줌
+</p>
+
+<h3><code>@wraps(f)</code></h3>
+<p>
+  이 코드에 대해 잠깐 얘기하자면, Flask에서는 꼭 필요한 줄이다.
+</p>
+<p>
+  데코레이터를 거치면 <code>logout</code> 자리에 <code>wrapper</code>가 들어간다.
+  그래서 함수 이름도 전부 <code>"wrapper"</code>가 되는데, Flask는 함수 이름으로 API를 구분해서
+  <code>@login_required</code>를 붙인 API가 두 개만 되어도 Flask가 같은 이름의 API가 이미 있다고 판단해 <code>AssertionError</code>를 내고 서버가 실행되지 않는다.
+</p>
+<p>
+  <code>functools.wraps</code>는 원래 함수의 이름이나 설명 같은 정보를 <code>wrapper</code>에 복사해 준다.
+  덕분에 감싼 뒤에도 Flask가 보기에는 <code>logout</code>은 여전히 <code>logout</code>이 된다.
+</p>
+
+<h2>STEP 5: 실제로 사용하기</h2>
+<p>
+  이제 로그인이 필요한 API 위에 한 줄만 붙이면 된다.
+</p>
+
+<pre><code># routes/auth.py
+@auth_bp.route("/logout", methods=["POST"])
+@login_required  # 여기 !!
+def logout():
+    session.clear()
+    return jsonify(success=True, data=None)
+</code></pre>
+
+<p>요청이 들어오면 STEP 4의 흐름대로 동작한다.</p>
+<ol>
+  <li><code>POST /auth/logout</code> 요청이 오면, Flask는 <code>logout</code> 자리에 있는 <code>wrapper</code>를 실행한다.</li>
+  <li><code>wrapper</code>가 <code>get_current_uid()</code>로 session에 uid가 있는지 확인한다.</li>
+  <li>없으면 원래 <code>logout</code>은 실행하지 않고 401 <code>LOGIN_REQUIRED</code>를 돌려준다.</li>
+  <li>있으면 원래 <code>logout</code>을 실행해서 <code>session.clear()</code>로 로그아웃하고 성공 응답을 돌려준다.</li>
+</ol>
+
+<p>
+  경로 값을 받는 API에도 똑같이 쓸 수 있다. <code>*args, **kwargs</code> 덕분에 <code>rid</code>가 그대로 전달된다.
+</p>
+
+<pre><code># routes/reviews.py
+@reviews_bp.route("/reviews/&lt;rid&gt;", methods=["DELETE"])
+@login_required
+def delete_review(rid):
+    review_service.delete_review(get_current_uid(), rid)
+    return jsonify(success=True, data=None)
+</code></pre>
+
+<p>
+  <b>주의할 점: 데코레이터 함수의 위치</b> <br>
+  <code>@auth_bp.route</code>가 맨 위, <code>@login_required</code>가 그 아래여야 한다. <br>
+  데코레이터는 아래에서 위로 적용되기 때문에, 이 순서여야 Flask가 <b>로그인 검사로 감싼 함수</b>를 API로 등록한다. <br>
+  순서를 거꾸로 쓰면 Flask는 감싸기 전의 원래 함수를 등록해 버린다.
+</p>
+
+<p>
+  다른 파트 팀원에게는 이렇게만 공유하면 끝이다.
+</p>
+<blockquote>
+  <p>로그인이 필요한 API에는 <code>@login_required</code>를 route 바로 아래에 붙이고, uid가 필요하면 <code>get_current_uid()</code>를 쓰면 됨</p>
+</blockquote>
+
+<h2>결과</h2>
+<p>
+  VS Code 확장 프로그램인 Thunder Client로 로그인하지 않은 상태에서 로그인이 필요한 API에 요청을 보내 봤다.
+  원래 함수는 실행되지 않고, 의도한 대로 401 공통 에러가 돌아왔다.
+</p>
+
+<p><img src="../images/image6.png" alt="Thunder Client에서 로그인 없이 요청했을 때 401 응답"></p>
+
+<h2>결론</h2>
+<ul>
+  <li><b>session</b>으로 로그인 상태를 기억하고, <code>get_current_uid()</code>로 현재 로그인한 사용자를 꺼낸다.</li>
+  <li><b>데코레이터</b>를 쓰면 원래 함수를 고치지 않고 앞에 로그인 검사를 끼워 넣을 수 있다.</li>
+  <li>로그인 검사 코드가 <code>login_required</code> 한 곳에만 있어서, 빠뜨릴 걱정이 줄고 에러 메시지를 바꿀 때도 한 곳만 고치면 된다.</li>
+  <li>함수 안쪽을 몰라도 <code>@login_required</code> 한 줄만 붙이면 돼서, 다른 파트 팀원도 바로 쓸 수 있었다.</li>
+  <li>Flask에서 직접 데코레이터를 만들 때는 <code>@wraps</code>와 데코레이터 순서를 꼭 챙기자.</li>
+</ul>
+<p>
+  처음에는 "공통 에러를 어떻게 처리하지?"라는 고민에서 시작했다.
+  그런데 결국 매일 쓰던 <code>@app.route</code>가 어떻게 동작하는지까지 이해하게 됐다.
+  반복되는 코드가 보이면, 그걸 감싸는 함수를 만들 수 없는지 먼저 생각해 보게 될 것 같다.
+</p>
+
+<h2>출처</h2>
+<ul>
+  <li>2026-2 오픈SW플랫폼 수업 실습: Flask session을 이용한 로그인 구현</li>
+  <li><a href="https://flask.palletsprojects.com/en/stable/patterns/viewdecorators/">Flask 공식 문서: View Decorators (Login Required Decorator)</a></li>
+  <li><a href="https://docs.python.org/3/library/functools.html#functools.wraps">Python 공식 문서: functools.wraps</a></li>
+</ul>
+
+</body>
+</html>
