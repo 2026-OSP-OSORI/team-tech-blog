@@ -1,0 +1,851 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>가상환경(venv) 만들고 requirements.txt로 패키지 한 번에 설치하기</title><style>
+/* cspell:disable-file */
+/* webkit printing magic: print all background colors */
+html {
+	-webkit-print-color-adjust: exact;
+}
+* {
+	box-sizing: border-box;
+	-webkit-print-color-adjust: exact;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+@media only screen {
+	body {
+		margin: 2em auto;
+		max-width: 900px;
+		color: rgb(55, 53, 47);
+	}
+}
+
+body {
+	line-height: 1.5;
+	white-space: pre-wrap;
+}
+
+a,
+a.visited {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.pdf-relative-link-path {
+	font-size: 80%;
+	color: #444;
+}
+
+h1,
+h2,
+h3 {
+	letter-spacing: -0.01em;
+	line-height: 1.2;
+	font-weight: 600;
+	margin-bottom: 0;
+}
+
+/* Override strong tags inside headings to maintain consistent weight */
+h1 strong,
+h2 strong,
+h3 strong {
+	font-weight: 600;
+}
+
+.page-title {
+	font-size: 2.5rem;
+	font-weight: 700;
+	margin-top: 0;
+	margin-bottom: 0.75em;
+}
+
+h1 {
+	font-size: 1.875rem;
+	margin-top: 1.875rem;
+}
+
+h2 {
+	font-size: 1.5rem;
+	margin-top: 1.5rem;
+}
+
+h3 {
+	font-size: 1.25rem;
+	margin-top: 1.25rem;
+}
+
+.source {
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	padding: 1.5em;
+	word-break: break-all;
+}
+
+.callout {
+	border-radius: 10px;
+	padding: 1rem;
+	/* Paint a complete callout box on every PDF page fragment. */
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+}
+
+/* For default-background callouts, render the border outline. */
+.callout.block-color-default_background {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+figure {
+	margin: 1.25em 0;
+	page-break-inside: avoid;
+}
+
+/*
+ * Toggles and callouts hold arbitrary content, so they can easily be taller
+ * than a page. They must stay breakable: avoiding breaks inside them makes
+ * Chromium push the whole block onto the next page, which leaves the previous
+ * page mostly empty before every long toggle.
+ */
+details,
+aside {
+	margin: 1.25em 0;
+}
+
+/* Keep a toggle's title on the same page as the start of its content. */
+summary {
+	page-break-after: avoid;
+	break-after: avoid;
+}
+
+/*
+ * Toggle headings render as <h1/h2/h3 style="display:inline-block"> inside
+ * <summary>. Without this reset, the heading's margin-top pushes it below the
+ * ::marker (▼), so the triangle and the title appear on separate lines.
+ */
+summary h1,
+summary h2,
+summary h3,
+summary h4 {
+	margin-top: 0;
+}
+
+figcaption {
+	opacity: 0.5;
+	font-size: 85%;
+	margin-top: 0.5em;
+}
+
+mark {
+	background-color: transparent;
+}
+
+.indented {
+	padding-left: 1.5em;
+}
+
+hr {
+	background: transparent;
+	display: block;
+	width: 100%;
+	height: 1px;
+	visibility: visible;
+	border: none;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+img {
+	max-width: 100%;
+}
+
+@media only print {
+	img {
+		max-height: 100vh;
+		object-fit: contain;
+	}
+
+	table.collection-content {
+		width: 100%;
+		table-layout: fixed;
+	}
+
+	table.collection-content th,
+	table.collection-content td {
+		overflow-wrap: anywhere;
+	}
+
+	table.collection-content td > .user,
+	table.collection-content td > time {
+		white-space: pre-wrap;
+	}
+}
+
+@page {
+	margin: 1in;
+}
+
+.collection-content-wrapper {
+	overflow-x: auto;
+}
+
+@media only print {
+	.collection-content-wrapper {
+		overflow-x: visible;
+	}
+}
+
+.collection-content {
+	font-size: 0.875rem;
+}
+
+.collection-content td {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.column-list {
+	display: flex;
+	gap: 46px;
+}
+
+.column {
+	min-width: 0;
+	overflow: hidden;
+}
+
+.column > *:first-child {
+	margin-top: 0;
+}
+
+.table_of_contents-item {
+	display: block;
+	font-size: 0.875rem;
+	line-height: 1.3;
+	padding-inline: 0.125rem;
+	padding-block: 0.375rem;
+}
+
+.table_of_contents-indent-1 {
+	margin-left: 1.5rem;
+}
+
+.table_of_contents-indent-2 {
+	margin-left: 3rem;
+}
+
+.table_of_contents-indent-3 {
+	margin-left: 4.5rem;
+}
+
+.table_of_contents-link {
+	text-decoration: none;
+	opacity: 0.7;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.18);
+}
+
+table,
+th,
+td {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+table {
+	border-collapse: collapse;
+	border-left: none;
+	border-right: none;
+}
+
+th,
+td {
+	font-weight: normal;
+	padding: 0.25em 0.5em;
+	line-height: 1.5;
+	min-height: 1.5em;
+	text-align: left;
+}
+
+th {
+	color: rgba(55, 53, 47, 0.6);
+}
+
+ol,
+ul {
+	margin: 0;
+	margin-block-start: 0.6em;
+	margin-block-end: 0.6em;
+}
+
+li > ol:first-child,
+li > ul:first-child {
+	margin-block-start: 0.6em;
+}
+
+ul > li {
+	list-style: disc;
+}
+
+ul.to-do-list {
+	padding-inline-start: 0;
+}
+
+ul.to-do-list > li {
+	list-style: none;
+}
+
+.to-do-children-checked {
+	text-decoration: line-through;
+	opacity: 0.375;
+}
+
+ul.toggle > li {
+	list-style: none;
+}
+
+ul {
+	padding-inline-start: 1.7em;
+}
+
+ul > li {
+	padding-left: 0.1em;
+}
+
+ol {
+	padding-inline-start: 1.6em;
+}
+
+ol.numbered-list.numbered-list-digits-2 {
+	padding-inline-start: 2em;
+}
+
+ol.numbered-list.numbered-list-digits-3plus {
+	padding-inline-start: 2.4em;
+}
+
+ol > li {
+	padding-left: 0.2em;
+}
+
+.mono ol {
+	padding-inline-start: 2em;
+}
+
+.mono ol > li {
+	text-indent: -0.4em;
+}
+
+.toggle {
+	padding-inline-start: 0em;
+	list-style-type: none;
+}
+
+/* Indent toggle children */
+.toggle > li > details {
+	padding-left: 1.7em;
+}
+
+.toggle > li > details > summary {
+	margin-left: -1.1em;
+}
+
+.selected-value {
+	display: inline-block;
+	padding: 0 0.5em;
+	background: rgba(206, 205, 202, 0.5);
+	border-radius: 3px;
+	margin-right: 0.5em;
+	margin-top: 0.3em;
+	margin-bottom: 0.3em;
+	white-space: nowrap;
+}
+
+.collection-title {
+	display: inline-block;
+	margin-right: 1em;
+}
+
+.page-description {
+	margin-bottom: 2em;
+}
+
+.simple-table {
+	margin-top: 1em;
+	font-size: 0.875rem;
+	empty-cells: show;
+}
+.simple-table td {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table th {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table-header-color {
+	background: rgb(247, 246, 243);
+	color: black;
+}
+.simple-table-header {
+	font-weight: 500;
+}
+
+time {
+	opacity: 0.5;
+}
+
+.icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	max-width: 1.2em;
+	max-height: 1.2em;
+	text-decoration: none;
+	vertical-align: text-bottom;
+	margin-right: 0.5em;
+}
+
+/*
+ * Render emoji icons using a ::before pseudo-element to keep the glyph
+ * out of the DOM textContent traversal. This avoids double-rendering icons
+ * in callouts and page titles.
+ * NOTE(slim/html-export-pseudo-icons): I can't tagref this because it will
+ * flag as a duplicate tag after codegen.
+ */
+.icon[data-emoji]::before {
+	content: attr(data-emoji);
+}
+
+img.icon {
+	border-radius: 3px;
+}
+
+.callout img.notion-static-icon {
+	width: 1em;
+	height: 1em;
+}
+
+.callout p {
+	margin: 0;
+}
+
+.callout h1,
+.callout h2,
+.callout h3 {
+	margin: 0 0 0.6rem;
+}
+
+.user-icon {
+	width: 1.5em;
+	height: 1.5em;
+	border-radius: 100%;
+	margin-right: 0.5rem;
+}
+
+.user-icon-inner {
+	font-size: 0.8em;
+}
+
+.text-icon {
+	border: 1px solid #000;
+	text-align: center;
+}
+
+.page-cover-image {
+	display: block;
+	object-fit: cover;
+	width: 100%;
+	max-height: 30vh;
+}
+
+.page-header-icon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+}
+
+.page-header-icon-with-cover {
+	margin-top: -0.72em;
+	margin-left: 0.07em;
+}
+
+.page-header-icon img {
+	border-radius: 3px;
+}
+
+.link-to-page {
+	margin: 1em 0;
+	padding: 0;
+	border: none;
+	font-weight: 500;
+}
+
+p > .user {
+	opacity: 0.5;
+}
+
+td > .user,
+td > time {
+	white-space: nowrap;
+}
+
+input[type="checkbox"] {
+	margin-right: 0.4em;
+	vertical-align: middle;
+}
+
+p {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+
+.image {
+	border: none;
+	margin: 1.5em 0;
+	padding: 0;
+	border-radius: 0;
+	text-align: center;
+}
+
+.code,
+code {
+	background: rgba(135, 131, 120, 0.15);
+	border-radius: 3px;
+	padding: 0.2em 0.4em;
+	border-radius: 3px;
+	font-size: 85%;
+	tab-size: 2;
+}
+
+code {
+	color: #eb5757;
+}
+
+.code {
+	padding: 1.5em 1em;
+}
+
+.code-wrap {
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.code > code {
+	background: none;
+	padding: 0;
+	font-size: 100%;
+	color: inherit;
+}
+
+blockquote {
+	font-size: 1em;
+	margin: 1em 0;
+	padding-left: 1em;
+	border-left: 3px solid rgb(55, 53, 47);
+}
+
+blockquote.quote-large {
+	font-size: 1.25em;
+}
+
+.bookmark {
+	text-decoration: none;
+	max-height: 8em;
+	padding: 0;
+	display: flex;
+	width: 100%;
+	align-items: stretch;
+}
+
+.bookmark-title {
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	height: 1.75em;
+	white-space: nowrap;
+}
+
+.bookmark-text {
+	display: flex;
+	flex-direction: column;
+}
+
+.bookmark-info {
+	flex: 4 1 180px;
+	padding: 12px 14px 14px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.bookmark-image {
+	width: 33%;
+	flex: 1 1 180px;
+	display: block;
+	position: relative;
+	object-fit: cover;
+	border-radius: 1px;
+}
+
+.bookmark-description {
+	color: rgba(55, 53, 47, 0.6);
+	font-size: 0.75em;
+	overflow: hidden;
+	max-height: 4.5em;
+	word-break: break-word;
+}
+
+.bookmark-href {
+	font-size: 0.75em;
+	margin-top: 0.25em;
+}
+
+.tab {
+	margin: 1.25em 0;
+	padding-inline: 1rem;
+	border: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+.sans { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"; }
+.code { font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace; }
+.serif { font-family: Lyon-Text, Georgia, ui-serif, serif; }
+.mono { font-family: iawriter-mono, Nitti, Menlo, Courier, monospace; }
+.pdf .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP'; }
+.pdf:lang(zh-CN) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC'; }
+.pdf:lang(zh-TW) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC'; }
+.pdf:lang(ko-KR) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR'; }
+.pdf .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.pdf .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP'; }
+.pdf:lang(zh-CN) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC'; }
+.pdf:lang(zh-TW) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC'; }
+.pdf:lang(ko-KR) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR'; }
+.pdf .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.highlight-default {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.highlight-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.highlight-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.highlight-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.highlight-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.highlight-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.highlight-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.highlight-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.highlight-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.highlight-default_background {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray_background {
+	background: rgba(42, 28, 0, 0.07);
+}
+.highlight-brown_background {
+	background: rgba(139, 46, 0, 0.086);
+}
+.highlight-orange_background {
+	background: rgba(224, 101, 1, 0.129);
+}
+.highlight-yellow_background {
+	background: rgba(211, 168, 0, 0.137);
+}
+.highlight-teal_background {
+	background: rgba(0, 100, 45, 0.09);
+}
+.highlight-blue_background {
+	background: rgba(0, 124, 215, 0.094);
+}
+.highlight-purple_background {
+	background: rgba(102, 0, 178, 0.078);
+}
+.highlight-pink_background {
+	background: rgba(197, 0, 93, 0.086);
+}
+.highlight-red_background {
+	background: rgba(223, 22, 0, 0.094);
+}
+.block-color-default {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.block-color-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.block-color-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.block-color-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.block-color-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.block-color-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.block-color-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.block-color-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.block-color-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.block-color-default_background {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray_background {
+	background: rgba(240, 239, 237, 1);
+}
+.block-color-brown_background {
+	background: rgba(245, 237, 233, 1);
+}
+.block-color-orange_background {
+	background: rgba(251, 235, 222, 1);
+}
+.block-color-yellow_background {
+	background: rgba(249, 243, 220, 1);
+}
+.block-color-teal_background {
+	background: rgba(232, 241, 236, 1);
+}
+.block-color-blue_background {
+	background: rgba(229, 242, 252, 1);
+}
+.block-color-purple_background {
+	background: rgba(243, 235, 249, 1);
+}
+.block-color-pink_background {
+	background: rgba(250, 233, 241, 1);
+}
+.block-color-red_background {
+	background: rgba(252, 233, 231, 1);
+}
+.select-value-color-default { background-color: rgba(42, 28, 0, 0.07); }
+.select-value-color-gray { background-color: rgba(28, 19, 1, 0.11); }
+.select-value-color-brown { background-color: rgba(127, 51, 0, 0.156); }
+.select-value-color-orange { background-color: rgba(196, 88, 0, 0.203); }
+.select-value-color-yellow { background-color: rgba(209, 156, 0, 0.282); }
+.select-value-color-green { background-color: rgba(0, 96, 38, 0.156); }
+.select-value-color-blue { background-color: rgba(0, 118, 217, 0.203); }
+.select-value-color-purple { background-color: rgba(92, 0, 163, 0.141); }
+.select-value-color-pink { background-color: rgba(183, 0, 78, 0.152); }
+.select-value-color-red { background-color: rgba(206, 24, 0, 0.164); }
+
+.checkbox {
+	display: inline-flex;
+	vertical-align: text-bottom;
+	width: 16;
+	height: 16;
+	background-size: 16px;
+	margin-left: 2px;
+	margin-right: 5px;
+}
+
+.checkbox-on {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+
+.checkbox-off {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+	
+</style><style>@import url('https://cdn.jsdelivr.net/npm/katex@0.16.25/dist/katex-swap.min.css')</style></head><body><article id="422294ce-baae-80d2-bc10-ea54e2b1a1ea" class="page sans"><header><h1 class="page-title" dir="auto">가상환경(venv) 만들고 requirements.txt로 패키지 한 번에 설치하기</h1><p class="page-description" dir="auto"></p></header><div class="page-body"><h1 id="e0cc12e7-f754-43f7-a9ab-53a6a77480fb" class="" dir="auto"><strong>Part 1. 가상환경(venv) 만들고 requirements.txt로 패키지 설치하기</strong></h1><h4 id="5bd55bfc-1832-43f2-b2fc-6271153bdbce" class="" dir="auto">백엔드개발을 위해 작업환경을 설정할 때에 필요한 설정과정</h4><ul id="422294ce-baae-808f-9094-cb41c83b16c6" class="bulleted-list" dir="auto"><li style="list-style-type:disc">venv</li></ul><ul id="422294ce-baae-80b1-b02e-e21fda62df0a" class="bulleted-list" dir="auto"><li style="list-style-type:disc">requirements.txt</li></ul><h3 id="422294ce-baae-8085-89cd-fb537df27620" class="" dir="auto"> <strong>flask를 구동하기 위해서는 가상환경을 만들어야한다. 왜일까?</strong></h3><p id="422294ce-baae-8005-9488-c661355b0408" class="" dir="auto">flask는 기본적으로 python 라이브러리이다. python라이브러리들은 서로 의존성도 다르고 버전에 따라 함수나 동작방식이 달라지는 경우가 많다.</p><p id="8cd356e4-a37c-4de6-8738-3ff8dae819a7" class="" dir="auto">따라서 프로젝트 1에서는 flaks 2.x를 쓰다가 프로젝트 2를 위해 flask 3.x를 설치하여 구동하는 순간<br/>프로젝트 1의 flask2.x가  새로 깐 flask3.x로 덮어 씌워지기 때문에 프로젝트1의 코드는 올바르게 작동할 수 없다.</p><p id="b4062e97-cfb3-4f5a-847b-d873fa4493c5" class="" dir="auto">내 컴퓨터의 파이썬 전역환경에 여러프로젝트의 라이브러리가 뒤섞이지 않게 할 방법이 필요했다<br/>=&gt; 그렇게 고안된 방법이 프로젝트 마다 파이썬을 위한 독립적인 공간을 설정하는 가상환경 방식이다.<br/>가상환경 내에 설치된 파이썬 라이브러리들은 내 컴퓨터의 파이썬 전역환경과 독립적으로 작동한다.<br/>현재 프로젝트를 위해 별도 버전의 라이브러리들을 다운받아도 다른 프로젝트들은 전혀 영향을 받지 않는다.</p><p id="422294ce-baae-80a0-bbd0-e02e470fb718" class="" dir="auto">
+</p><h3 id="422294ce-baae-807e-968f-fe8a7820de03" class="" dir="auto"><strong>requirements.txt는 왜 필요 할까?</strong></h3><p id="422294ce-baae-8016-83f4-ff72906032b7" class="" dir="auto">협업을 위해 필요하다. 팀원 6명이 각자 다른시기에  pip  install을 하면 설치 시점마다 다른버전의 라이브러리가 깔리게 된다. 어떤팀원의 노트북에선 잘 프로젝트가 잘 돌아가지만 다른 팀원의 노트북에선 돌아가지 않는 불상사가 발생할 수 있다. 따라서 필요한 패키지와 버전을 일괄적으로 적어둔 텍스트 파일 requirements.txt를 팀프로젝트 파일에 공유문서로 넣어 보다 효율적으로 의존성관리를 할 수있다.</p><p id="422294ce-baae-80b9-a18e-f445f9fff0f7" class="" dir="auto">
+</p><p id="422294ce-baae-8095-89a3-e30a7bb9b8ca" class="" dir="auto">
+</p><h3 id="998f1c3b-6bcd-4028-b60c-c277e42471d6" class="" dir="auto">1-1. 프로젝트 폴더에서 터미널 열기</h3><p id="a75c8016-9e8e-4ebf-b569-f32f10a33af0" class="" dir="auto">VS Code에서 <code>파일 &gt; 폴더 열기</code>로 팀 레포 폴더를 연 뒤 터미널을 연다,<br/>(터미널 경로가 레포 폴더인지 꼭 확인하도록하자) venv는 지금 있는 폴더에 만들어진다.</p><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" integrity="sha512-7Z9J3l1+EYfeaPKcGXu3MS/7T+w19WtKQY/n+xzmw4hZhJ9tyYmcUS+4QqAlzhicE5LAfMQSF3iFTK9bQdTxXg==" crossorigin="anonymous" referrerPolicy="no-referrer"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" integrity="sha512-tN7Ec6zAFaVSG3TpNAKtk4DOHNpSwKHxxrsiw4GHKESGPs5njn/0sMCUMl2svV4wo4BK/rCP7juYz+zx+l6oeQ==" crossorigin="anonymous" referrerPolicy="no-referrer"/><pre id="41720289-f47e-4c40-8ad6-50735bea19ee" class="code code-wrap" data-notion-code-syntax="powershell"><code class="language-powershell" style="white-space:pre-wrap;word-break:break-all">python --version</code></pre><p id="f568b4ac-ddd7-4222-95ea-eb02f5ce159f" class="" dir="auto"><code>Python 3.x.x</code>가 나오면  정상</p><h3 id="a83ed832-7c22-40e1-8864-e5018fca7dd0" class="" dir="auto">1-2. 가상환경 만들기</h3><pre id="c1f88df4-e411-4df5-979a-b867dea0e190" class="code code-wrap" data-notion-code-syntax="powershell"><code class="language-powershell" style="white-space:pre-wrap;word-break:break-all">python -m venv venv</code></pre><p id="e0a0aa75-0869-4288-b0b7-7ebdb2b7c316" class="" dir="auto">앞의 <code>venv</code>는 &quot;venv 모듈을 실행하라&quot;는 뜻이고, 뒤의 <code>venv</code>는 만들 폴더 이름<br/>실행하면 프로젝트 안에 <code>venv</code> 폴더가 생긴다.</p><h3 id="a8f77c98-d3c7-4f90-89f0-9c0caffd9449" class="" dir="auto">1-3. 가상환경 켜기(활성화)</h3><pre id="88039f2c-1702-4db2-9c6d-8d8370260eca" class="code code-wrap" data-notion-code-syntax="powershell"><code class="language-powershell" style="white-space:pre-wrap;word-break:break-all">venv\Scripts\activate</code></pre><p id="70c9978d-b3dc-4ad6-87a9-439e9c0ac4cc" class="" dir="auto">터미널 줄 앞에 <code>(venv)</code>가 붙으면 정상</p><figure id="422294ce-baae-80b1-a798-cec8fc0f3480" class="image" data-notion-image="image.png" dir="ltr"><a href="../images/image%200.png"><img style="width:661.997802734375px" src="../images/image%200.png"/></a></figure><p id="422294ce-baae-80b7-bc91-f76f90d494bd" class="" dir="auto"> 이제부터 <code>pip install</code>은 컴퓨터 전체가 아니라 이 <code>venv</code> 상자 안에 설치된다!</p><p id="422294ce-baae-8062-8e8a-d43259243b30" class="" dir="auto">. <strong>터미널을 새로 열 때마다 다시 켜야</strong> 하고, 끌 때는 <code>deactivate</code>를 입력한다.</p><h3 id="1d6505ba-c283-4224-940e-2a763f3de4b2" class="" dir="auto">1-4. VS Code에 이 가상환경 알려주기</h3><p id="6047a9d3-6289-40b1-b9b8-49b22db026cb" class="" dir="auto"><code>Ctrl + Shift + P</code> → <code>Python: Select Interpreter</code> → <code>.\venv\Scripts\python.exe</code>를 고릅니다. 이걸 안 하면 터미널에서는 잘 도는데 VS Code가 <code>import flask</code>에 물결선을 치거나, 실행 버튼(▶)이 다른 Python으로 돌아간다.</p><h3 id="4b409117-cac3-49ee-811a-87b262c5a786" class="" dir="auto">1-5. requirements.txt로 한 번에 설치하기</h3><p id="ff46a8ac-f084-4640-9385-50859e00fef7" class="" dir="auto">레포에 <code>requirements.txt</code>가 있으면 이 한 줄로 끝난다.<br/>해당 파일에 적힌 모든 의존성들이 한 번에 설치된다.</p><pre id="da3b998f-2dcb-4f72-a391-309918201526" class="code code-wrap" data-notion-code-syntax="powershell"><code class="language-powershell" style="white-space:pre-wrap;word-break:break-all">pip install -r requirements.txt</code></pre><p id="2478fc86-d25b-4541-af7f-188c8ddab7d8" class="" dir="auto">Emade 백엔드에 필요한 패키지는 대략 이렇게 생김.<br/>버전 숫자는 레포에 있는 파일을 따르면 됨</p><pre id="a2916fee-e5ca-4352-bbef-9fc63bfc138a" class="code code-wrap"><code style="white-space:pre-wrap;word-break:break-all">Flask==3.x.x
+firebase-admin==6.x.x
+python-dotenv==1.x.x</code></pre><h3 id="953f2ff3-4eeb-40f9-adb3-a776b9917505" class="" dir="auto">1-6. 패키지를 새로 설치했다면: 목록 업데이트</h3><p id="987d91d1-091a-4ddf-b97b-b54a025204fb" class="" dir="auto">내가 새 패키지를 설치했다면 팀원들도 알 수 있게 requirements.txt 목록에 반영해줘야함.</p><pre id="06554700-3c3a-4667-b077-ec0ac9d65d67" class="code code-wrap" data-notion-code-syntax="powershell"><code class="language-powershell" style="white-space:pre-wrap;word-break:break-all">pip freeze &gt; requirements.txt</code></pre><p id="b670dfb9-7633-4f38-b4dd-a2f8c5e9402f" class="" dir="auto"><code>pip freeze</code>는 <strong>지금 venv에 설치된 것 전부</strong>를 버전과 함께 적어줌.<br/>(그래서 반드시 <code>(venv)</code>가 켜진 상태에서 실행해야 함!! 꺼진 상태에서 치면 컴퓨터 전체에 깔린 엉뚱한 패키지까지 적히게 된다) </p><p id="422294ce-baae-804a-9efb-dbf5d5bf8e1d" class="" dir="auto">이 다음엔 팀원들에게 requirements.txt가 바뀌었으니 <code>pip install -r</code> 다시 해주세요&quot;라고 알려주면 된다.</p><h3 id="79564659-eb6f-41db-8a14-bb0a300cef64" class="" dir="auto">1-7. venv 폴더는 깃에 올리지 않기</h3><p id="5197f4b2-dcc9-4a9a-bf58-8ff3270b9db5" class="" dir="auto"><code>.gitignore</code>에 아래 줄이 있는지 확인하기.</p><pre id="aeb4c89f-95d1-4d66-84a0-55e59766fbbe" class="code code-wrap"><code style="white-space:pre-wrap;word-break:break-all">venv/</code></pre><p id="dab7a338-4edf-478b-99d0-19479dd034c7" class="" dir="auto">venv 폴더는 수천 개 파일이고, 안에 내 컴퓨터 경로가 박혀 있어서 다른 컴퓨터에서는 어차피 안 돌아간다. </p><p id="422294ce-baae-8063-a3d7-f736b70275f2" class="" dir="auto">올릴 것은 requirements.txt뿐이고, 의존성설치는 각자 진행한다.</p><h3 id="d4ba0f19-7c85-41d9-9f79-360b5de38f27" class="" dir="auto">확인하기</h3><pre id="38c28bf4-a207-4741-851c-3624c5c74299" class="code code-wrap" data-notion-code-syntax="powershell"><code class="language-powershell" style="white-space:pre-wrap;word-break:break-all">pip list</code></pre><p id="60923037-acff-4de3-ac97-b6d85f6df156" class="" dir="auto">목록에 <code>Flask</code>, <code>firebase-admin</code>, <code>python-dotenv</code>가 보이면 Part 1 완료</p><p id="422294ce-baae-80d2-ad85-f6deb35a8e3b" class="" dir="auto">
+</p><hr id="422294ce-baae-80df-929d-ed07f5155d2c" dir="auto"/><h1 id="422294ce-baae-80cf-beb1-c4181fe1be3b" class="" dir="auto"><strong>Part 2. Firebase Realtime DB를 만들고 Flask에 연결하기</strong></h1><p id="422294ce-baae-8051-b594-df13af740f75" class="" dir="auto">flask 서버가 firebase DB에 들어가려면 두 가지가 필요하다,</p><ul id="422294ce-baae-80e0-8cbc-f723795ebd8c" class="bulleted-list" dir="auto"><li style="list-style-type:disc">어느 DB? → 주소/database URL</li></ul><ul id="422294ce-baae-8074-a75c-f189ad6cc8a3" class="bulleted-list" dir="auto"><li style="list-style-type:disc">들어갈 자격이 있는지? → 서비스계정 키</li></ul><p id="422294ce-baae-803a-b0af-da3c26ce8d68" class="" dir="auto">이 두가지를 .env라는 이름의 파일에 명시해 적어 둘 것임.</p><p id="422294ce-baae-80d1-9648-e6820f5f446b" class="" dir="auto">
+</p><h3 id="cd4bf21e-e921-4ca2-9763-0a86d7e5c829" class="" dir="auto">2-1. Firebase 프로젝트 만들기</h3><ol type="1" id="701e47fb-6992-47e1-8c98-a9abe5924b09" class="numbered-list" start="1" dir="auto"><li><a href="https://console.firebase.google.com/">Firebase 콘솔</a>에 Google 계정으로 로그인</li></ol><ol type="1" id="98e28aad-8454-4bf5-b597-9a27b1e4b617" class="numbered-list" start="2" dir="auto"><li><strong>프로젝트 추가</strong> → 이름 입력(예: <code>emade</code>) → Google 애널리틱스는 꺼도 됨 → 프로젝트 만들기.</li></ol><ol type="1" id="eb5b498e-72a3-4d2b-b185-c85d7078acc8" class="numbered-list" start="3" dir="auto"><li>팀원도 콘솔을 봐야 한다면 <strong>프로젝트 설정 → 사용자 및 권한</strong>에서 팀원 이메일을 추가</li></ol><h3 id="4612bc77-8672-4397-b737-3cffb22ea7ff" class="" dir="auto">2-2. Realtime Database 만들기</h3><ol type="1" id="ca5f41c9-0deb-48df-914a-849990886728" class="numbered-list" start="1" dir="auto"><li>왼쪽 메뉴 <strong>빌드 → Realtime Database → 데이터베이스 만들기</strong>.</li></ol><ol type="1" id="b9e45a06-9407-4e70-b703-ba1b418a7ace" class="numbered-list" start="2" dir="auto"><li>위치는 <strong>싱가포르(asia-southeast1)</strong>를 고르기. 한국에서 가장 가까워서 응답이 빠름.</li></ol><ol type="1" id="a80440ed-1564-4a64-9d1c-6435d04ebae0" class="numbered-list" start="3" dir="auto"><li>보안 규칙은 <strong>잠금 모드</strong>로 시작</li></ol><ol type="1" id="6994914f-0392-4440-97f2-5972b6a71783" class="numbered-list" start="4" dir="auto"><li>만들어진 화면 위쪽의 주소를 복사해 둔다 ⇒ 이게 <strong>databaseURL</strong></li></ol><pre id="c7d7326c-e6d9-4b69-a657-f58f885c05c3" class="code code-wrap"><code style="white-space:pre-wrap;word-break:break-all">https://emade-xxxxx-default-rtdb.asia-southeast1.firebasedatabase.app</code></pre><p id="a3b37e87-de1b-4f88-a725-64ac7587390f" class="" dir="auto"><strong>잠금 모드 설정하는 이유 ⇒ </strong>잠금 모드는 &quot;브라우저에서 직접 접속하는 사람은 모두 막아라&quot;는 뜻<br/>우리 구조에서는 프론트(React)가 DB에 직접 가지 않고 항상 Flask를 거치고, Flask가 쓰는 <code>firebase_admin</code>은 서비스 계정 키(마스터키)로 들어가서 이 규칙의 영향을 받지 않음. 잠금 모드를 풀어두면 DB 주소를 아는 사람 누구나 주문 데이터를 고치거나 지울 수 있기에 필요한 설정이다.</p><h3 id="5774c18b-3e70-4c6a-a0b9-c40c633b0f3e" class="" dir="auto">2-3. 서비스 계정 키(JSON) 받기</h3><ol type="1" id="b5acc0cb-525f-4ce2-936f-0d96aa3d73d5" class="numbered-list" start="1" dir="auto"><li>왼쪽 위 톱니바퀴 <strong>프로젝트 설정 → 서비스 계정</strong> 탭.</li></ol><ol type="1" id="08ee8367-b48e-4836-be93-446304f6b67b" class="numbered-list" start="2" dir="auto"><li><strong>새 비공개 키 생성</strong> → JSON 파일이 다운로드 됨.</li></ol><ol type="1" id="44d47326-910c-47f9-9cb5-b88c472dcd5e" class="numbered-list" start="3" dir="auto"><li>파일 이름을 <code>serviceAccountKey.json</code>으로 바꾸고, 백엔드 폴더(app.py가 있는 곳) 안에 <code>authentication</code> 폴더를 만들어 그 안에 두기</li></ol><p id="c6eb7005-fcb9-48ca-9775-9f5db30aa97a" class="" dir="auto">이 파일은 DB를 마음대로 읽고 쓸 수 있는 <strong>마스터키임. </strong></p><p id="422294ce-baae-80ea-81b5-f931eda2b1a1" class="" dir="auto">팀원에게는 깃이 아니라 카톡, 메일과 같은 개인 채널을 통해 전달해야함. 아니면 팀원이 각자 위 방법으로 새 키를 받게 해도 된다.(키는 여러 개 만들어도 ok).</p><h3 id="f2bf7db4-20d5-4b36-bbc9-44abf48fe2d9" class="" dir="auto">2-4. .env 파일에 설정 넣기</h3><p id="0301082a-14c3-4291-adeb-10515d0bb736" class="" dir="auto">프로젝트 폴더 맨 위에 <code>.env</code> 파일을 만들고 아래와 같이 적기</p><pre id="62d1fcc3-6d03-4eb7-8883-72f932f82544" class="code code-wrap"><code style="white-space:pre-wrap;word-break:break-all">SECRET_KEY = &quot;여기에_랜덤_문자열&quot;
+
+FIREBASE_KEY_PATH = authentication/serviceAccountKey.json
+
+FIREBASE_DATABASE_URL = https://emade-xxxxx-default-rtdb.asia-southeast1.firebasedatabase.app
+</code></pre><table id="a44f79df-c666-4eda-ae32-a5db914bfebf" class="simple-table" dir="ltr"><tbody><tr id="4ba8f477-d949-4d15-b84d-ba1014038ce9" dir="ltr"><td id="WQLL" class="" style="width:175.6138458251953px"><code>SECRET_KEY</code></td><td id="Gt:&gt;" class="" style="width:282px">Flask가 로그인 세션 쿠키에 <strong>위조 방지 도장</strong>을 찍을 때 쓰는 비밀값 (Firebase와는 상관없음)</td><td id="OWbK" class=""><code>python -c &quot;import secrets; print(secrets.token_hex(32))&quot;<br/></code>명령어로 만든 랜덤문자열을 넣으심 됩니다.</td></tr><tr id="bc62a4d8-e69f-4cd2-93f6-f4458199220b" dir="ltr"><td id="WQLL" class="" style="width:175.6138458251953px"><code>FIREBASE_KEY_PATH</code></td><td id="Gt:&gt;" class="" style="width:282px">서비스 계정 키(마스터키) 파일이 있는 위치</td><td id="OWbK" class=""><code>authentication/serviceAccountKey.json</code> 백엔드 루트 경로에 authentication 폴더를 만들고 거기에 서비스 키를 넣음.</td></tr><tr id="a367a96a-c770-4d92-a8fe-53e822feb0db" dir="ltr"><td id="WQLL" class="" style="width:175.6138458251953px"><code>FIREBASE_DATABASE_URL</code></td><td id="Gt:&gt;" class="" style="width:282px">어느 DB로 갈지(주소)</td><td id="OWbK" class="">2-2 에서 복사한 그 값</td></tr></tbody></table><p id="422294ce-baae-802c-9f87-c2e19aff8f1c" class="" dir="auto">
+</p><p id="ae4d802d-52db-48a5-929e-5adccad5d479" class="" dir="auto">그리고 <code>.gitignore</code>에 두 줄을 추가.</p><pre id="9375753b-cbe9-41b7-a043-4277f5ef06a4" class="code code-wrap"><code style="white-space:pre-wrap;word-break:break-all">.env
+authentication/serviceAccountKey.json</code></pre><p id="422294ce-baae-80e9-b1d8-d31e3880221e" class="" dir="auto">⇒ 왜 코드에 직접쓰지 않고 .env의  변수명으로 해당값에 접근하는가??</p><p id="422294ce-baae-80f1-af41-e0863c6b0a9b" class="" dir="auto">코드에 위값들을 하드코딩 해놓으면 깃 허브에서 코드에 접근가능한 불특정다수들이 우리 DB에 접근하는 불상사가 생겨버린다. 위 값들은 관리자 이외에는 접근해서는 안되는 값들이기에 원격 레포지토리에 업로드 되어선 안된다.  따라서 .girignore에 .env를 등록하고 .env와 키파일은 각자의 컴퓨터에만 두어야한다.</p><h3 id="acf4ddfe-e2ca-4631-ab2d-b0da5995734d" class="" dir="auto">2-5. Flask 코드에서 연결하기</h3><p id="c7dc9347-a55b-4717-91e4-e603d5461d4a" class="" dir="auto">Firebase 연결 코드를 <code>firebase.py</code>에 따로 두고, <code>app.py</code>가 시작할 때 한 번 부른다.</p><p id="422294ce-baae-80fc-bdbf-ea9f9779349a" class="" dir="auto"><strong>firebase.py</strong></p><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js" integrity="sha512-8VrjxGFLIkS0mgEmO3p46A5OkqATHhrNVwyv2V7yUeZrk1jmSDuI3SOEpC9XHEHUWEOsfzzcJeBlUkee9lKGrw==" crossorigin="anonymous" referrerPolicy="no-referrer"></script><pre id="422294ce-baae-80ff-9bc1-d6b4d011adbb" class="code code-wrap" data-notion-code-syntax="python"><code class="language-python" style="white-space:pre-wrap;word-break:break-all">import os
+
+import firebase_admin
+from firebase_admin import credentials
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Firebase Admin 초기화 (앱 시작 시 한 번만)
+def init_firebase():
+    try:
+        firebase_admin.get_app()   # 이미 초기화됐으면 넘어감
+        return
+    except ValueError:
+        pass
+
+    key_path = os.path.join(BASE_DIR, os.getenv(&quot;FIREBASE_KEY_PATH&quot;))
+    cred = credentials.Certificate(key_path)
+    firebase_admin.initialize_app(cred, {
+        &quot;databaseURL&quot;: os.getenv(&quot;FIREBASE_DATABASE_URL&quot;),
+    })</code></pre><p id="422294ce-baae-80d1-941c-ed5c568586a7" class="" dir="auto"><strong>app.py</strong></p><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js" integrity="sha512-AKaNmg8COK0zEbjTdMHJAPJ0z6VeNqvRvH4/d5M4sHJbQQUToMBtodq4HaV4fa+WV2UTfoperElm66c9/8cKmQ==" crossorigin="anonymous" referrerPolicy="no-referrer"></script><pre id="b7e2f20f-7858-4066-81ef-776639e55874" class="code code-wrap" data-notion-code-syntax="python"><code class="language-python" style="white-space:pre-wrap;word-break:break-all">import os
+from dotenv import load_dotenv
+from flask import Flask
+from flask_cors import CORS
+
+from firebase import init_firebase
+
+load_dotenv()      # ① .env를 먼저 읽고
+init_firebase()    # ② 그 값으로 Firebase에 연결
+
+app = Flask(__name__)
+app.config[&quot;SECRET_KEY&quot;] = os.getenv(&quot;SECRET_KEY&quot;)
+
+CORS(app, supports_credentials=True)</code></pre><p id="422294ce-baae-809e-aaec-c06b06d423e9" class="" dir="auto">지켜야할 것</p><ol type="1" id="422294ce-baae-8052-8f5b-d8864dc457b9" class="numbered-list" start="1" dir="auto"><li>순서 <strong> </strong><code><strong>load_dotenv()</strong></code><strong> 다음에 </strong><code><strong>init_firebase()</strong></code><strong> .</strong></li></ol><ol type="1" id="422294ce-baae-8060-87b6-fc03a1909654" class="numbered-list" start="2" dir="auto"><li>연결은 한 번만<strong><br/>→ </strong><code>firebase_admin.get_app()</code> 은 이미 연결되 있나를 확인하는 함수<br/>→ initialize_app()을 두 번부르면 안되기 때문</li></ol><ol type="1" id="422294ce-baae-805a-ae57-c64d2e9a5759" class="numbered-list" start="3" dir="auto"><li><code>BASE_DIR</code>을 앞에 붙이면 터미널 위치와 상관없이 항상 <code>firebase.py</code> 옆의 <code>authentication</code> 폴더를 찾아줌. 상위경로에서 run flask를 했을 때 키를 못찾는 경우 막기 위함.</li></ol><ol type="1" id="422294ce-baae-8050-82a6-c8985acddc25" class="numbered-list" start="4" dir="auto"><li><code><strong>CORS(app, supports_credentials=True)</strong></code><strong>.</strong> React 개발 서버와 Flask(5000번)는 포트가 달라서 브라우저가 다른 사이트로 보고 요청을 막음<br/>→ 이 줄 덕분에 다른 주소에서 오는 요청을 서로 받기도 하고 로그인쿠키도 오가게 될 수 있는 것.</li></ol><h3 id="712a6871-1c53-408b-bd8c-278641ffcc5c" class="" dir="auto"><strong>2-6. 연결 테스트하기</strong></h3><p id="27c1d70b-53d0-472e-a5b0-2f3a3fab67cd" class="" dir="auto"><strong>연결이 됐는지 확인하는 임시 라우트를 하나 만들기</strong></p><p id="422294ce-baae-8064-b5c9-e34e35b28768" class="" dir="auto">서버가 켜졌는지는 <code>app.py</code>에 이미 있는 <code>/health</code>로, DB까지 연결됐는지는 아래 임시 라우트로 확인하기 <code>/health</code>는 DB를 건드리지 않아서, 이것만 되고 <code>/db-test</code>가 안 되면 Firebase 설정 문제라고 범위를 좁힐 수 있음!</p><pre id="be5cc96d-64d0-4e49-afae-f7572861dea4" class="code code-wrap" data-notion-code-syntax="python"><code class="language-python" style="white-space:pre-wrap;word-break:break-all"># app.py에 임시로 추가
+from firebase_admin import db
+
+@app.get(&quot;/db-test&quot;)
+def db_test():
+    ref = db.reference(&quot;connectionTest&quot;)
+    ref.set({&quot;message&quot;: &quot;hello emade&quot;})  # 쓰기
+    return ref.get()                      # 읽기</code></pre><pre id="9926a914-6b4a-4085-a3da-d81646a9a724" class="code code-wrap" data-notion-code-syntax="powershell"><code class="language-powershell" style="white-space:pre-wrap;word-break:break-all">flask run</code></pre><p id="52e8f532-e73c-44f1-8992-d618d82048d0" class="" dir="auto">브라우저에서 <code>http://127.0.0.1:5000/db-test</code>를 열었을 때 두 가지가 모두 보이면 성공</p><ol type="1" id="e5e8e3c4-325c-42a4-8846-2562a760aec8" class="numbered-list" start="1" dir="auto"><li>브라우저에 <code>{&quot;message&quot;: &quot;hello emade&quot;}</code>가 나온다 → <strong>읽기</strong> 성공</li></ol><ol type="1" id="8a13bef1-f560-4028-80c5-4a5757b1fb51" class="numbered-list" start="2" dir="auto"><li>Firebase 콘솔 Realtime Database 화면에 <code>connectionTest</code> 항목이 생겼다 → <strong>쓰기</strong> 성공</li></ol><p id="d71ee98f-2faf-45a1-a12f-c322a2e8f6f1" class="" dir="auto">확인이 끝나면 콘솔에서 <code>connectionTest</code>를 지우고, <code>/db-test</code> 라우트도 커밋 전에 지우자</p><hr id="422294ce-baae-801b-9893-c1c0126c39c3" dir="auto"/><h2 id="00b83c6d-81fa-4458-b757-d9e9b0895bea" class="" dir="auto">마무리 체크리스트</h2><p id="21dc164f-fd23-42e8-b36c-a41d6ace589b" class="" dir="auto">아래가 모두 체크되면 팀과 같은 환경에서 백엔드 개발을 시작할 수 있다.<br/>잘 확인하고 코드작업에 들어가자</p><ul id="76aba06b-c229-4b49-85c2-159ffc58b07a" class="bulleted-list" dir="auto"><li style="list-style-type:disc">터미널 앞에 <code>(venv)</code>가 보인다<details id="422294ce-baae-806a-bbde-c6a0d8ee3607" open="" class="toggle" dir="auto"><summary>ex</summary><div class="indented"><figure id="422294ce-baae-8001-af9c-ca7b3a0d9925" class="image" data-notion-image="image.png" dir="ltr"><a href="../images/image%200.png"><img style="width:661.997802734375px" src="../images/image%200.png"/></a></figure></div></details></li></ul><ul id="54c22160-1b01-4aab-88bc-a44fdeed98c1" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>pip list</code>에 Flask, firebase-admin, python-dotenv가 있다<details id="422294ce-baae-80df-ab03-d03309983203" open="" class="toggle" dir="auto"><summary>ex</summary><div class="indented"><figure id="422294ce-baae-8000-943e-fa56245638df" class="image" data-notion-image="image%201.png" dir="ltr"><a href="../images/image%201.png"><img style="width:475.9263610839844px" src="../images/image%201.png"/></a></figure><figure id="422294ce-baae-80fa-8e50-f44a848c8028" class="image" data-notion-image="image%202.png" dir="ltr"><a href="../images/image%202.png"><img style="width:464.0067138671875px" src="../images/image%202.png"/></a></figure></div></details></li></ul><ul id="5ffb25d0-6405-4614-af2c-74c52ea85fbb" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>.env</code>에 세 값(<code>SECRET_KEY</code>, <code>FIREBASE_KEY_PATH</code>, <code>FIREBASE_DATABASE_URL</code>)이 모두 채워져 있다<details id="422294ce-baae-80b9-931d-eb62bba734e5" open="" class="toggle" dir="auto"><summary>ex</summary><div class="indented"><figure id="422294ce-baae-802a-834b-d4211f22bc45" class="image" data-notion-image="%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7_2026-11-24_112241.png" dir="ltr"><a href="../images/image%203.png"><img style="width:666.0267944335938px" src="../images/image%203.png"/></a></figure></div></details></li></ul><ul id="0d3a1171-a95f-4308-a7b5-1ee2d749852b" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>authentication/serviceAccountKey.json</code>이 있다<details id="422294ce-baae-802e-8cc4-d348e8b230d2" open="" class="toggle" dir="auto"><summary>ex</summary><div class="indented"><figure id="422294ce-baae-804c-80b9-ed3db5953915" class="image" data-notion-image="image%203.png" dir="ltr"><a href="../images/image%204.png"><img style="width:365.9933166503906px" src="../images/image%204.png"/></a></figure></div></details></li></ul><ul id="fa336d58-363f-416d-9cbb-b9d9a610f8f3" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>.gitignore</code>에 <code>venv/</code>, <code>.env</code>, 키 파일 경로가 있다<details id="422294ce-baae-8029-a181-d86394a814a1" open="" class="toggle" dir="auto"><summary>ex</summary><div class="indented"><figure id="422294ce-baae-80bc-9ebd-ebc2f4c006c1" class="image" data-notion-image="image%204.png" dir="ltr"><a href="../images/image%205.png"><img style="width:620px" src="../images/image%205.png"/></a></figure></div></details></li></ul><ul id="812322e7-d698-4851-8966-93934fb56357" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>git status</code>에 <code>.env</code>와 키 파일이 보이지 않는다</li></ul><ul id="634e31c9-2e9c-4641-b932-0efae418d7d3" class="bulleted-list" dir="auto"><li style="list-style-type:disc"><code>/db-test</code>에서 읽기·쓰기가 모두 됐고, 테스트 데이터와 라우트를 지웠다</li></ul><ul id="bbbbcf40-e7c6-4d36-9991-4cf046f40a78" class="bulleted-list" dir="auto"><li style="list-style-type:disc">VS Code 인터프리터가 <code>.\venv\Scripts\python.exe</code>다</li></ul><p id="422294ce-baae-80af-87ec-fd651263c79f" class="" dir="auto">
+</p></div></article><span class="sans" style="font-size:14px;padding-top:2em"></span></body></html>
