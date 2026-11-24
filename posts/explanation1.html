@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Explanation1</title>
+  </head>
+  <body>
+    <article>
+      <header>
+        <h1>[Explanation1] Emade에서 판매자는 어떻게 상품을 올릴까</h1>
+        <p>
+          Emade 팀 · <time datetime="2026-11-30">2026-11-30</time> · 2026
+          오픈SW플랫폼 팀 프로젝트
+        </p>
+      </header>
+      <blockquote>
+      <p>이 글은 <strong>판매자 편</strong>이다. 구매자가 상품을 찾고 사고 리뷰를 남기는 흐름은 <a href="explanation2.html">구매자 편</a>에서 다룬다.</p>
+      </blockquote>
+      <h2>Context</h2>
+      <p>Emade는 이화여대 학생들이 직접 만든 취미 작품을 사고파는 교내 마켓이다. 프론트엔드는 <strong>React + Vite</strong>, 백엔드는 <strong>Flask</strong>, 데이터는 <strong>Firebase Realtime Database</strong>를 쓴다. 이 글에서는 판매자가 가입해서 첫 상품을 올리기까지의 흐름을 살펴본다.</p>
+      <h2>Problem / Goal</h2>
+      <p>Emade는 <strong>캠퍼스 안 직거래만</strong> 가능하고, <strong>판매자와 구매자가 메시지를 주고받을 수 없다.</strong> 그래서 판매자가 만날 시간과 장소를 미리 정해 두고, 구매자는 그중 하나를 골라 바로 예약하는 구조가 필요했다.</p>
+      <h2>Steps</h2>
+      <h3>1. 회원가입 · 로그인</h3>
+      <p><strong>이화여대 이메일(<code>ewha.ac.kr</code>, <code>ewhain.net</code>)로만 가입</strong>할 수 있다. 프론트에서 도메인을 검사해 칸 아래에 에러 문구를 보여 주고, 서버도 가입 요청을 받을 때 같은 검사를 한 번 더 한다. 로그인은 Flask 세션(쿠키) 방식이다.</p>
+      <h3>2. 거래 일정 설정 — 상품보다 시간이 먼저</h3>
+      <p>판매자는 마이페이지 &gt; <strong>나의 거래 일정</strong>에서 매주 반복되는 거래 가능 시간을 30분 단위로 정하고, 달력에서 특정 날짜만 막을 수도 있다. 처음에는 예외 시간을 상품마다 정하게 했지만, 시간이 안 되는 것은 <strong>판매자 본인의 사정</strong>이라서 판매자 단위로 옮겼다.</p>
+      <p><strong>주간 시간이 없으면 상품을 등록할 수 없다.</strong> 시간이 없는 상품은 구매자가 예약할 수 없기 때문이다. 그래서 상품 등록 화면은 들어오자마자 이를 확인한다.</p>
+      <pre><code class="language-jsx">// pages/product/ProductReg.jsx (핵심만 발췌)
+getMySchedule().then((schedule) =&gt; {
+  if (!hasWeeklySchedule(schedule)) {
+    alert(NO_SCHEDULE_MESSAGE);   // &quot;거래 가능한 주간 시간을 먼저 설정해 주세요.&quot;
+    navigate(SCHEDULE_PAGE, { replace: true });   // → /mypage/schedule
+    return;
+  }
+  setReady(true);   // 확인이 끝나야 입력 폼을 보여 준다
+});
+</code></pre>
+      <p>일정이 없으면 안내창을 띄우고 거래 일정 화면으로 보낸다. 서버도 <code>SCHEDULE_NOT_FOUND</code> 에러로 한 번 더 막는다.</p>
+      <h3>3. 상품 등록 — 거래 장소를 자세히</h3>
+      <p>상품 등록 화면은 왼쪽 <strong>입력 폼</strong>(사진, 상품명, 카테고리, 가격, 재고, 설명, 거래 장소, 태그)과 오른쪽 <strong>미리보기 카드</strong>로 나뉜다.</p>
+      <p>가장 고민한 부분은 <strong>거래 장소</strong>다. 처음에는 "학문관"처럼 건물을 고르게 하려 했지만, 메시지를 보낼 수 없으니 건물 이름만으로는 어디서 만날지 알 수 없다. 그래서 판매자가 <strong>장소를 직접 자세히 적는 방식</strong>으로 바꿨다. 장소는 여러 곳을 추가할 수 있고, 같은 장소를 두 번 넣으면 에러 문구를 보여 준다.</p>
+      <p><strong>등록하기</strong>를 누르면 사진과 함께 <code>FormData</code>로 보낸다. 서버는 상품을 저장하면서 판매자별·카테고리별·태그별 목록도 함께 만들어 나중에 빠르게 찾을 수 있게 한다.</p>
+      <h2>Result</h2>
+      <p>판매자는 <strong>가입 → 일정 설정 → 상품 등록</strong>만 하면 구매자가 예약할 수 있는 상품을 만들 수 있다. 구매자는 메시지 없이도 판매자가 정한 시간과 장소 중 하나를 골라 바로 예약한다.</p>
+      <h2>What I learned</h2>
+      <ul>
+      <li><strong>데이터가 누구에게 속하는지부터 정해야 한다.</strong> 예외 시간을 판매자 단위로 옮기면서 등록 폼이 단순해졌다.</li>
+      <li><strong>같은 검사는 프론트와 서버 양쪽에서 한다.</strong> 프론트 검사는 사용자가 빨리 알아차리게 하고, 실제로 막는 것은 서버다.</li>
+      <li><strong>채팅이 없다는 제약이 UX를 바꿨다.</strong> 대화로 해결할 수 없으니 처음 입력하는 정보가 자세해야 했다.</li>
+      </ul>
+      <h2>References</h2>
+      <ul>
+      <li>팀 GitHub repository: <a href="https://github.com/2026-OSP-OSORI/2026_osp_emade">https://github.com/2026-OSP-OSORI/2026_osp_emade</a></li>
+      <li>팀 Figma: <a href="https://www.figma.com/design/Icro25rwF2THqiVM5ygyW2/2026-2-OSORI">https://www.figma.com/design/Icro25rwF2THqiVM5ygyW2/2026-2-OSORI</a></li>
+      <li>MDN — <code>FormData</code>: <a href="https://developer.mozilla.org/docs/Web/API/FormData">https://developer.mozilla.org/docs/Web/API/FormData</a></li>
+      </ul>
+    </article>
+  </body>
+</html>
