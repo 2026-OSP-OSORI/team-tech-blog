@@ -4,8 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Explanation2</title>
+    <link rel="stylesheet" href="../style.css" />
   </head>
   <body>
+    <nav class="site-nav"><a href="../index.html">← 메인으로 돌아가기</a></nav>
     <article>
       <header>
         <h1>
@@ -72,6 +74,11 @@
         처리된 한 명만 예약된다.
       </p>
       <h2>Result</h2>
+      <p>
+        이 흐름의 핵심은 구매자가 예약을 확정하기 직전까지 현재 재고와 거래 시간을 다시 확인하는 것이다.
+        장바구니에 담았을 때 가능했던 상품도 다른 사용자의 예약으로 상태가 바뀔 수 있으므로, 서버가 마지막 요청을 원자적으로 검증한다.
+        그 결과 구매자는 실패 이유를 바로 확인하고 필요한 경우 다른 시간대를 선택할 수 있다.
+      </p>
       <p>
         예약에 성공하면 구매 완료 화면이 나오고, 거래 내역에서 예약을 확인할 수
         있다. 실패하면 장바구니가 최신 상태로 다시 표시되어, 어떤 상품이 왜 거래
