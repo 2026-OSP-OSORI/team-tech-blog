@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      재고는 0인데 왜 판매중일까? 상품 재고와 상태값 동기화 문제 해결
+    </title>
+
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.7;
+        color: #222;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        background-color: #ffffff;
+      }
+
+      h1 {
+        font-size: 2.2rem;
+        margin-bottom: 16px;
+        line-height: 1.4;
+      }
+
+      h2 {
+        margin-top: 48px;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #eee;
+      }
+
+      h3 {
+        margin-top: 32px;
+      }
+
+      p {
+        margin: 14px 0;
+      }
+
+      code {
+        background-color: #f3f4f6;
+        padding: 2px 6px;
+        border-radius: 5px;
+        font-family: Consolas, monospace;
+      }
+
+      pre {
+        background-color: #f6f8fa;
+        padding: 18px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 20px 0;
+      }
+
+      pre code {
+        background: none;
+        padding: 0;
+      }
+
+      blockquote {
+        margin: 24px 0;
+        padding: 16px 20px;
+        border-left: 4px solid #555;
+        background-color: #f8f8f8;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 24px 0;
+      }
+
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+      }
+
+      th {
+        background-color: #f5f5f5;
+      }
+
+      .summary {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 32px;
+      }
+
+      .problem {
+        color: #c0392b;
+        font-weight: bold;
+      }
+
+      .solution {
+        color: #1e8449;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    <article>
+      <h1>
+        재고는 0인데 왜 판매중일까?<br />상품 재고와 상태값 동기화 문제 해결
+      </h1>
+
+      <div class="summary">
+        <strong>Debugging</strong><br />
+        Emade 프로젝트에서 상품 재고와 판매 상태값이 서로 일치하지 않을 수 있는
+        문제를 발견하고, 문제의 원인과 해결 방법을 정리한 글입니다.
+      </div>
+
+      <h2>1. 문제 상황</h2>
+
+      <p>
+        Emade는 이화여대 학생들이 직접 만든 상품을 등록하고 직거래할 수 있는
+        서비스이다.
+      </p>
+
+      <p>상품에는 다음과 같은 판매 상태가 존재한다.</p>
+
+      <pre><code>ON_SALE        : 판매중
+TEMP_SOLD_OUT  : 일시품절
+ENDED          : 판매중단</code></pre>
+
+      <p>
+        상품의 재고가 존재하는 동안에는 <code>ON_SALE</code> 상태를 유지하고,
+        마지막 상품이 예약되어 재고가 0이 되면 <code>TEMP_SOLD_OUT</code> 상태가
+        되어야 한다.
+      </p>
+
+      <p>
+        예를 들어 재고가 1개 남아 있는 상품을 구매자가 예약하면 다음과 같이
+        변경되어야 한다.
+      </p>
+
+      <pre><code>예약 전
+stock = 1
+status = ON_SALE
+
+예약 후
+stock = 0
+status = TEMP_SOLD_OUT</code></pre>
+
+      <p>
+        그러나 백엔드 역할을 상품 담당과 주문 담당으로 나누어 구현하면서, 주문
+        로직에서는 재고만 감소시키고 상품 상태는 상품 담당 로직에서 관리하는
+        방법을 고려하게 되었다.
+      </p>
+
+      <p class="problem">이 경우 다음과 같은 모순된 상태가 발생할 수 있다.</p>
+
+      <pre><code>stock = 0
+status = ON_SALE</code></pre>
+
+      <p>
+        실제 재고는 없지만 DB에는 여전히 판매중인 상품으로 저장되어 있는
+        상태이다.
+      </p>
+
+      <h2>2. 처음 고려한 방법</h2>
+
+      <p>
+        처음에는 <code>TEMP_SOLD_OUT</code>을 DB에 직접 저장하지 않고, 상품을
+        화면에 보여주는 시점에 재고를 확인해 일시품절 여부를 계산하는 방법을
+        고려했다.
+      </p>
+
+      <p>즉 DB가 다음 상태라고 가정한다.</p>
+
+      <pre><code>status = ON_SALE
+stock = 0</code></pre>
+
+      <p>그리고 상품 조회 API에서 다음과 같이 상태를 계산하는 방식이다.</p>
+
+      <pre><code>if product["status"] == "ON_SALE" and product["stock"] == 0:
+    display_status = "TEMP_SOLD_OUT"</code></pre>
+
+      <p>
+        이렇게 하면 주문을 담당하는 코드에서는 <code>status</code>를 수정하지
+        않고 재고만 변경하면 된다는 장점이 있다.
+      </p>
+
+      <p>
+        하지만 서비스 전체 흐름을 확인하면서 이 방법에는 문제가 있다는 것을
+        발견했다.
+      </p>
+
+      <h2>3. 문제의 원인</h2>
+
+      <p>
+        상품의 판매 가능 여부를 확인하는 곳은 상품 상세 페이지 하나뿐만이
+        아니었다.
+      </p>
+
+      <p>
+        Emade에서는 상품 목록, 검색 결과, 랭킹, 장바구니, 예약 등 여러 기능에서
+        상품의 상태를 사용한다.
+      </p>
+
+      <p>DB에 다음과 같은 값이 저장되어 있다면,</p>
+
+      <pre><code>stock = 0
+status = ON_SALE</code></pre>
+
+      <p>
+        상품을 사용하는 모든 기능에서 단순히 <code>status</code>만 확인할 수
+        없고, 반드시 재고까지 함께 확인해야 한다.
+      </p>
+
+      <pre><code>status == "ON_SALE" and stock &gt; 0</code></pre>
+
+      <p>만약 어떤 API에서 실수로 다음과 같이 상태만 확인한다면,</p>
+
+      <pre><code>if product["status"] == "ON_SALE":
+    # 판매 가능한 상품으로 처리</code></pre>
+
+      <p>재고가 없는 상품도 판매 가능한 상품처럼 처리될 수 있다.</p>
+
+      <p>
+        즉 근본적인 원인은
+        <strong
+          >서로 밀접하게 연관된 <code>stock</code>과 <code>status</code>가 서로
+          다른 상태를 나타낼 수 있다는 점</strong
+        >이었다.
+      </p>
+
+      <p>특히 Emade 백엔드는 다음과 같이 역할이 분리되어 있다.</p>
+
+      <pre><code>백2
+상품 / 찜 / 검색 담당
+
+백3
+스케줄 / 주문 / 장바구니 담당</code></pre>
+
+      <p>
+        예약이 발생하면 백3에서 실제 재고를 감소시키지만, 상품 상태는 백2에서
+        주로 사용하는 값이기 때문에 담당 영역만 기준으로 데이터를 완전히
+        분리하면 재고와 상태가 서로 맞지 않는 순간이 발생할 수 있었다.
+      </p>
+
+      <h2>4. 해결 방법</h2>
+
+      <p>
+        최종적으로 <code>TEMP_SOLD_OUT</code>을 화면에서 계산해서 보여주는 값이
+        아니라,
+        <strong
+          >DB의 <code>products.status</code>에 실제로 저장되는 상태값</strong
+        >으로 관리하기로 했다.
+      </p>
+
+      <pre><code>ON_SALE
+TEMP_SOLD_OUT
+ENDED</code></pre>
+
+      <blockquote>
+        재고를 변경하는 로직에서는 재고 변경 결과에 따라 상품 상태도 함께
+        동기화한다.
+      </blockquote>
+
+      <h3>예약으로 재고가 0이 된 경우</h3>
+
+      <p>
+        구매자의 예약으로 마지막 재고가 판매되면, 주문 담당 로직에서 재고를
+        감소시키면서 상품 상태도 함께 변경한다.
+      </p>
+
+      <pre><code>stock: 1 → 0
+status: ON_SALE → TEMP_SOLD_OUT</code></pre>
+
+      <pre><code>new_stock = product["stock"] - quantity
+
+if new_stock == 0 and product["status"] == "ON_SALE":
+    new_status = "TEMP_SOLD_OUT"</code></pre>
+
+      <h3>예약 취소 또는 실패로 재고가 복구된 경우</h3>
+
+      <p>
+        예약 취소 또는 실패로 재고가 다시 생기면
+        <code>TEMP_SOLD_OUT</code> 상태를 <code>ON_SALE</code>로 복구한다.
+      </p>
+
+      <pre><code>stock: 0 → 1
+status: TEMP_SOLD_OUT → ON_SALE</code></pre>
+
+      <pre><code>if new_stock &gt; 0 and product["status"] == "TEMP_SOLD_OUT":
+    new_status = "ON_SALE"</code></pre>
+
+      <h2>5. ENDED 상태는 예외 처리</h2>
+
+      <p>여기서 추가로 고려해야 할 상태가 <code>ENDED</code>였다.</p>
+
+      <p>
+        <code>ENDED</code>는 재고 부족으로 발생하는 상태가 아니라
+        <strong>판매자가 직접 판매를 중단한 상태</strong>이다.
+      </p>
+
+      <p>
+        따라서 판매자가 판매를 중단한 이후 예약 취소로 재고가 다시 증가하더라도
+        자동으로 <code>ON_SALE</code> 상태로 변경되면 안 된다.
+      </p>
+
+      <pre><code>stock = 0
+status = ENDED
+
+↓ 예약 취소로 재고 복구
+
+stock = 1
+status = ENDED</code></pre>
+
+      <p>따라서 다음과 같이 상태 변경 규칙을 정리했다.</p>
+
+      <pre><code>if status == "ENDED":
+    # 판매자가 직접 중단한 상태이므로 유지
+    pass
+
+elif stock == 0:
+    status = "TEMP_SOLD_OUT"
+
+elif stock &gt; 0 and status == "TEMP_SOLD_OUT":
+    status = "ON_SALE"</code></pre>
+
+      <h2>6. TEMP_SOLD_OUT과 OUT_OF_STOCK의 차이</h2>
+
+      <p>
+        구현 과정에서 <code>TEMP_SOLD_OUT</code>과 <code>OUT_OF_STOCK</code>의
+        역할도 구분할 필요가 있었다.
+      </p>
+
+      <h3>TEMP_SOLD_OUT</h3>
+
+      <p>
+        상품 자체가 현재 일시품절 상태라는 것을 나타내는
+        <strong>DB 상태값</strong>이다.
+      </p>
+
+      <pre><code>products.status = TEMP_SOLD_OUT</code></pre>
+
+      <p>
+        상품 목록이나 상품 상세 화면에서 이 값을 이용해 사용자에게 "일시품절"
+        상태를 표시한다.
+      </p>
+
+      <h3>OUT_OF_STOCK</h3>
+
+      <p>
+        예약 요청 시 필요한 수량보다 재고가 부족할 때 반환하는
+        <strong>API 에러 코드</strong>이다.
+      </p>
+
+      <pre><code>{
+  "success": false,
+  "error": {
+    "code": "OUT_OF_STOCK",
+    "message": "*상품 재고가 부족합니다."
+  }
+}</code></pre>
+
+      <p>즉 두 값의 역할은 다음과 같이 구분된다.</p>
+
+      <pre><code>TEMP_SOLD_OUT
+→ 상품이 현재 어떤 상태인가?
+
+OUT_OF_STOCK
+→ 지금 요청한 작업이 왜 실패했는가?</code></pre>
+
+      <h2>7. 최종 상태 변경 규칙</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>상황</th>
+            <th>담당</th>
+            <th>상태 변경</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td>판매자가 판매중단 선택</td>
+            <td>백2</td>
+            <td>→ ENDED</td>
+          </tr>
+
+          <tr>
+            <td>판매자가 다시 판매중 선택</td>
+            <td>백2</td>
+            <td>재고가 있으면 ON_SALE, 재고가 0이면 TEMP_SOLD_OUT</td>
+          </tr>
+
+          <tr>
+            <td>판매자가 재고를 양수 → 0으로 수정</td>
+            <td>백2</td>
+            <td>ON_SALE → TEMP_SOLD_OUT</td>
+          </tr>
+
+          <tr>
+            <td>판매자가 재고를 0 → 양수로 수정</td>
+            <td>백2</td>
+            <td>TEMP_SOLD_OUT → ON_SALE</td>
+          </tr>
+
+          <tr>
+            <td>예약으로 재고가 1 → 0</td>
+            <td>백3</td>
+            <td>ON_SALE → TEMP_SOLD_OUT</td>
+          </tr>
+
+          <tr>
+            <td>취소·실패로 재고가 0 → 양수</td>
+            <td>백3</td>
+            <td>TEMP_SOLD_OUT → ON_SALE</td>
+          </tr>
+
+          <tr>
+            <td>현재 상태가 ENDED</td>
+            <td>백2·백3</td>
+            <td>재고가 변경되어도 ENDED 유지</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="solution">
+        결과적으로 재고가 변경되는 시점에 상태도 함께 갱신하도록 하여, DB에서
+        재고와 상품 상태가 서로 모순되지 않도록 했다.
+      </p>
+
+      <pre><code>stock = 0
+status = ON_SALE</code></pre>
+
+      <p>위와 같은 상태가 발생하지 않도록 관리하는 것이 핵심이었다.</p>
+
+      <h2>8. 디버깅을 통해 배운 점</h2>
+
+      <p>
+        처음에는 백엔드 담당별로 수정하는 데이터를 최대한 분리하면 구조가 더
+        깔끔할 것이라고 생각했다.
+      </p>
+
+      <p>
+        하지만 서로 강하게 연결된 데이터까지 담당별로 완전히 분리하면 오히려
+        데이터의 일관성을 유지하기 어려워질 수 있다는 것을 알게 되었다.
+      </p>
+
+      <p>특히 이번 문제를 통해 세 가지 점을 배울 수 있었다.</p>
+
+      <h3>1. DB 상태값은 실제 데이터와 모순되지 않아야 한다.</h3>
+
+      <p>
+        상품 상태가 <code>ON_SALE</code>이라면 실제로 판매 가능한 재고가
+        존재하도록 유지하는 것이 이후의 코드와 API 조건을 단순하게 만든다.
+      </p>
+
+      <h3>2. 하나의 화면이 아니라 서비스 전체 흐름을 고려해야 한다.</h3>
+
+      <p>
+        상품 상세 화면 하나만 생각하면 조회 시 상태를 계산하는 방식도 가능하다.
+        하지만 검색, 랭킹, 장바구니, 예약 등 여러 기능에서 같은 데이터를
+        사용하기 때문에 모든 기능의 흐름을 함께 고려해야 했다.
+      </p>
+
+      <h3>3. 역할 분리와 데이터 변경 분리는 같은 의미가 아니다.</h3>
+
+      <p>
+        백2는 상품 상태에 대한 정책을 담당하고, 백3은 예약으로 실제 재고가
+        변경되는 순간 해당 정책에 따라 상태를 함께 변경하도록 설계했다.
+      </p>
+
+      <p>
+        이번 디버깅을 통해 단순히 오류가 발생한 코드 한 줄만 고치는 것이 아니라,
+        <strong
+          >데이터가 언제 변경되고 다른 기능들이 그 데이터를 어떻게 사용하는지
+          전체 흐름을 확인하는 것이 중요하다</strong
+        >는 것을 배웠다.
+      </p>
+    </article>
+  </body>
+</html>
